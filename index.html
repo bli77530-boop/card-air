@@ -318,6 +318,31 @@ html, body {
     bottom: calc(15% + env(safe-area-inset-bottom));
   }
 }
+/* --- 稀有卡專屬特效 --- */
+/* 稀有卡背景光暈與呼吸燈效果 */
+.rare-card .flip-inner {
+  box-shadow: 0 0 40px #ffaa00, 0 0 80px #ff0055, 0 0 120px #ff00ff !important;
+  animation: rarePulse 1.2s infinite alternate;
+}
+
+@keyframes rarePulse {
+  0% { box-shadow: 0 0 30px #ffd700, 0 0 60px #ff8c00; transform: scale(1); }
+  100% { box-shadow: 0 0 60px #fffacd, 0 0 120px #ff003c; transform: scale(1.05); }
+}
+
+/* 稀有卡專屬的金色星星 */
+.star.rare-star {
+  background: radial-gradient(circle, #ffffff 0%, #ffd700 50%, #ff8c00 100%);
+  box-shadow: 0 0 10px #ffd700;
+  width: 25px;
+  height: 25px;
+  animation: flyRareStar 2s ease-out forwards;
+}
+
+@keyframes flyRareStar {
+  0% { transform: translate(0, 0) scale(1) rotate(0deg); opacity: 1; }
+  100% { transform: translate(var(--x), var(--y)) scale(0) rotate(360deg); opacity: 0; }
+}
 </style>
 </head>
 <body>
@@ -463,6 +488,13 @@ function startDraw() {
   // ===== 在這裡指定抽到的卡片 =====
   let chosenCard = 'images/air.png'; 
 
+  let isRare = false;
+    if (chosenCard === 'images/air.png') {
+      isRare = true;
+    }
+
+    // 將 isRare 變數傳遞給顯示卡片的函數
+    showCenterCard(chosenCard, isRare);
   // 3. 設定時間軸：轉 3 秒 + 停住等待 2 秒 = 總共 5 秒 (5000ms)
   centerCardTimeout = setTimeout(() => {
     // 時間到，把背面的 7 張卡隱藏
@@ -481,15 +513,19 @@ function startDraw() {
 }
 
 
-function showCenterCard(imageUrl) {
+function showCenterCard(imageUrl, isRare = false) {
   const overlay = document.getElementById('overlay');
-  overlay.style.background = 'rgba(0,0,0,0.6)';
-  overlay.style.pointerEvents = 'auto'; // 讓背景可以被點擊
-
-  const container = document.getElementById("cardContainer");
-  const centerCard = document.createElement("div");
-  centerCard.className = "centerCard";
-
+  
+  if (isRare) {
+    // 稀有卡：背景變成帶有紅金色的暗光，並加上 rare-card 類別
+    overlay.style.background = 'radial-gradient(circle, rgba(150,0,0,0.8) 0%, rgba(0,0,0,0.9) 80%)';
+    centerCard.classList.add('rare-card'); 
+  } else {
+    // 普通卡：維持原本的半透明黑底
+    overlay.style.background = 'rgba(0,0,0,0.6)';
+  }
+  
+  overlay.style.pointerEvents = 'auto';
   // 建立雙面卡片的 HTML 結構
   // ⚠️ 請確保 'images/fish_back.png' 是你第二張屬性圖的正確路徑！
   centerCard.innerHTML = `
@@ -516,6 +552,8 @@ function showCenterCard(imageUrl) {
   centerCard.addEventListener('touchend', e => {
     endX = e.changedTouches[0].screenX;
     handleSwipe();
+    requestAnimationFrame(() => centerCard.classList.add('show'));
+  spawnStars(centerCard, isRare ? 60 : 20, isRare);
   });
 
   function handleSwipe() {
@@ -541,19 +579,24 @@ function showCenterCard(imageUrl) {
   };
 }
 
-function spawnStars(target,count){
-  const rect=target.getBoundingClientRect();
-  for(let i=0;i<count;i++){
-    const star=document.createElement("div");
-    star.className="star";
-    star.style.left=`${rect.left+rect.width/2}px`;
-    star.style.top=`${rect.top+rect.height/2}px`;
-    const angle=Math.random()*2*Math.PI;
-    const distance=80+Math.random()*100;
-    star.style.setProperty("--x",`${Math.cos(angle)*distance}px`);
-    star.style.setProperty("--y",`${Math.sin(angle)*distance}px`);
+// 加上 isRare 參數
+function spawnStars(target, count, isRare = false) {
+  const rect = target.getBoundingClientRect();
+  for(let i=0; i<count; i++) {
+    const star = document.createElement("div");
+    
+    // 如果是稀有卡，加上 rare-star 類別
+    star.className = isRare ? "star rare-star" : "star"; 
+    
+    star.style.left = `${rect.left + rect.width/2}px`;
+    star.style.top = `${rect.top + rect.height/2}px`;
+    const angle = Math.random() * 2 * Math.PI;
+    // 稀有卡的星星飛得比較遠
+    const distance = isRare ? (100 + Math.random() * 200) : (80 + Math.random() * 100); 
+    star.style.setProperty("--x", `${Math.cos(angle) * distance}px`);
+    star.style.setProperty("--y", `${Math.sin(angle) * distance}px`);
     document.body.appendChild(star);
-    setTimeout(()=>star.remove(),1800);
+    setTimeout(() => star.remove(), 2000);
   }
 }
 
@@ -660,4 +703,3 @@ function initShakeDetection(){
 </script>
 </body>
 </html>
-
