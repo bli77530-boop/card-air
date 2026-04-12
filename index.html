@@ -515,7 +515,6 @@ function startDraw() {
 function showCenterCard(imageUrl, isRare = false) {
   const overlay = document.getElementById('overlay');
   
-  // ⚠️ 這裡必須先宣告與建立卡片容器，不然下面會報錯！
   const container = document.getElementById("cardContainer");
   const centerCard = document.createElement("div");
   centerCard.className = "centerCard";
@@ -539,36 +538,63 @@ function showCenterCard(imageUrl, isRare = false) {
     </div>
   `;
 
+  // 🌟 【手機滑動修復關鍵】🌟
+  // 告訴手機瀏覽器：摸到卡片時不要做原生的上一頁/縮放/滾動，專心給我們判斷翻面！
+  centerCard.style.touchAction = 'none';
+
   container.appendChild(centerCard);
   currentCenterCard = centerCard;
   
-  // 觸發顯示動畫與噴發星星 (放在這裡才是對的！)
   requestAnimationFrame(() => centerCard.classList.add('show'));
   spawnStars(centerCard, isRare ? 60 : 20, isRare);
 
-  // --- 加入滑動偵測 (Swipe) ---
+  // --- 加入滑動偵測 (同時支援手機與電腦) ---
   let startX = 0;
-  let endX = 0;
 
+  // 【手機觸控監聽】
   centerCard.addEventListener('touchstart', e => {
     startX = e.changedTouches[0].screenX;
   });
-
   centerCard.addEventListener('touchend', e => {
-    endX = e.changedTouches[0].screenX;
-    handleSwipe();
+    let endX = e.changedTouches[0].screenX;
+    handleSwipe(startX, endX);
   });
 
-  function handleSwipe() {
-    // 滑動距離超過 50px 才算數
-    if (startX - endX > 50) {
+  // 【電腦滑鼠監聽】(如果你之後偶爾用電腦開，也能正常滑動)
+  let isDragging = false;
+  centerCard.addEventListener('mousedown', e => {
+    startX = e.screenX;
+    isDragging = true;
+  });
+  window.addEventListener('mouseup', e => {
+    if (isDragging) {
+      isDragging = false;
+      handleSwipe(startX, e.screenX);
+    }
+  });
+
+  function handleSwipe(start, end) {
+    // 滑動距離超過 40px 就觸發 (稍微調低門檻，手機更好滑)
+    if (start - end > 40) {
       // 向左滑：翻到背面
       centerCard.classList.add('flipped');
-    } else if (endX - startX > 50) {
+    } else if (end - start > 40) {
       // 向右滑：翻回正面
       centerCard.classList.remove('flipped');
     }
   }
+
+  // --- 點擊背景(黑底)關閉卡片 ---
+  overlay.onclick = function() {
+    if (centerCard) {
+      centerCard.remove();
+      currentCenterCard = null;
+    }
+    overlay.style.background = 'rgba(0,0,0,0)';
+    overlay.style.pointerEvents = 'none'; 
+    overlay.onclick = null; 
+  };
+}
 
   // --- 改成點擊背景(黑底)關閉卡片 ---
   overlay.onclick = function() {
