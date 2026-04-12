@@ -516,6 +516,11 @@ function startDraw() {
 function showCenterCard(imageUrl, isRare = false) {
   const overlay = document.getElementById('overlay');
   
+  // ⚠️ 這裡必須先宣告與建立卡片容器，不然下面會報錯！
+  const container = document.getElementById("cardContainer");
+  const centerCard = document.createElement("div");
+  centerCard.className = "centerCard";
+
   if (isRare) {
     // 稀有卡：背景變成帶有紅金色的暗光，並加上 rare-card 類別
     overlay.style.background = 'radial-gradient(circle, rgba(150,0,0,0.8) 0%, rgba(0,0,0,0.9) 80%)';
@@ -526,8 +531,8 @@ function showCenterCard(imageUrl, isRare = false) {
   }
   
   overlay.style.pointerEvents = 'auto';
+
   // 建立雙面卡片的 HTML 結構
-  // ⚠️ 請確保 'images/fish_back.png' 是你第二張屬性圖的正確路徑！
   centerCard.innerHTML = `
     <div class="flip-inner">
       <div class="flip-front" style="background-image: url('${imageUrl}')"></div>
@@ -538,8 +543,9 @@ function showCenterCard(imageUrl, isRare = false) {
   container.appendChild(centerCard);
   currentCenterCard = centerCard;
   
+  // 觸發顯示動畫與噴發星星 (放在這裡才是對的！)
   requestAnimationFrame(() => centerCard.classList.add('show'));
-  spawnStars(centerCard, 20);
+  spawnStars(centerCard, isRare ? 60 : 20, isRare);
 
   // --- 加入滑動偵測 (Swipe) ---
   let startX = 0;
@@ -552,8 +558,6 @@ function showCenterCard(imageUrl, isRare = false) {
   centerCard.addEventListener('touchend', e => {
     endX = e.changedTouches[0].screenX;
     handleSwipe();
-    requestAnimationFrame(() => centerCard.classList.add('show'));
-  spawnStars(centerCard, isRare ? 60 : 20, isRare);
   });
 
   function handleSwipe() {
@@ -567,7 +571,7 @@ function showCenterCard(imageUrl, isRare = false) {
     }
   }
 
-  // --- 改成點擊背景(黑底)關閉卡片，而不是 5 秒自動關閉 ---
+  // --- 改成點擊背景(黑底)關閉卡片 ---
   overlay.onclick = function() {
     if (centerCard) {
       centerCard.remove();
