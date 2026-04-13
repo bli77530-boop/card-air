@@ -512,23 +512,15 @@ function startDraw() {
   }, 5000);
 }
 
-function showCenterCard(imageUrl, isRare = false) {
+function showCenterCard(imageUrl) {
   const overlay = document.getElementById('overlay');
   
-  // ⚠️ 這裡必須先宣告與建立卡片容器，不然下面會報錯！
   const container = document.getElementById("cardContainer");
   const centerCard = document.createElement("div");
-  centerCard.className = "centerCard";
+  centerCard.className = "centerCard rare-card"; // 🌟 直接加上 rare-card 特效類別
 
-  if (isRare) {
-    // 稀有卡：背景變成帶有紅金色的暗光，並加上 rare-card 類別
-    overlay.style.background = 'radial-gradient(circle, rgba(150,0,0,0.8) 0%, rgba(0,0,0,0.9) 80%)';
-    centerCard.classList.add('rare-card'); 
-  } else {
-    // 普通卡：維持原本的半透明黑底
-    overlay.style.background = 'rgba(0,0,0,0.6)';
-  }
-  
+  // 背景變成帶有紅金色的暗光
+  overlay.style.background = 'radial-gradient(circle, rgba(150,0,0,0.8) 0%, rgba(0,0,0,0.9) 80%)';
   overlay.style.pointerEvents = 'auto';
 
   // 建立雙面卡片的 HTML 結構
@@ -539,70 +531,78 @@ function showCenterCard(imageUrl, isRare = false) {
     </div>
   `;
 
+  // 告訴手機瀏覽器：摸到卡片時不要做原生的縮放/滾動
+  centerCard.style.touchAction = 'none';
+
   container.appendChild(centerCard);
   currentCenterCard = centerCard;
   
-  // 觸發顯示動畫與噴發星星 (放在這裡才是對的！)
+  // 觸發顯示動畫，並噴發大量稀有星星 (固定 60 顆)
   requestAnimationFrame(() => centerCard.classList.add('show'));
-  spawnStars(centerCard, isRare ? 60 : 20, isRare);
+  spawnStars(centerCard, 60);
 
-  // --- 加入滑動偵測 (Swipe) ---
+  // --- 加入滑動偵測 (同時支援手機與電腦) ---
   let startX = 0;
-  let endX = 0;
 
   centerCard.addEventListener('touchstart', e => {
     startX = e.changedTouches[0].screenX;
   });
-
   centerCard.addEventListener('touchend', e => {
-    endX = e.changedTouches[0].screenX;
-    handleSwipe();
+    let endX = e.changedTouches[0].screenX;
+    handleSwipe(startX, endX);
   });
 
-  function handleSwipe() {
-    // 滑動距離超過 50px 才算數
-    if (startX - endX > 50) {
-      // 向左滑：翻到背面
+  let isDragging = false;
+  centerCard.addEventListener('mousedown', e => {
+    startX = e.screenX;
+    isDragging = true;
+  });
+  window.addEventListener('mouseup', e => {
+    if (isDragging) {
+      isDragging = false;
+      handleSwipe(startX, e.screenX);
+    }
+  });
+
+  function handleSwipe(start, end) {
+    if (start - end > 40) {
       centerCard.classList.add('flipped');
-    } else if (endX - startX > 50) {
-      // 向右滑：翻回正面
+    } else if (end - start > 40) {
       centerCard.classList.remove('flipped');
     }
   }
 
-  // --- 改成點擊背景(黑底)關閉卡片 ---
+  // --- 點擊背景關閉卡片 ---
   overlay.onclick = function() {
     if (centerCard) {
       centerCard.remove();
       currentCenterCard = null;
     }
     overlay.style.background = 'rgba(0,0,0,0)';
-    overlay.style.pointerEvents = 'none'; // 關閉後背景不可點擊
-    overlay.onclick = null; // 清除點擊事件
+    overlay.style.pointerEvents = 'none'; 
+    overlay.onclick = null; 
   };
 }
 
-// 加上 isRare 參數
-function spawnStars(target, count, isRare = false) {
+// 已經移除了 isRare 判定，所有星星都是華麗版
+function spawnStars(target, count) {
   const rect = target.getBoundingClientRect();
   for(let i=0; i<count; i++) {
     const star = document.createElement("div");
     
-    // 如果是稀有卡，加上 rare-star 類別
-    star.className = isRare ? "star rare-star" : "star"; 
+    // 直接套用稀有星星的樣式
+    star.className = "star rare-star"; 
     
     star.style.left = `${rect.left + rect.width/2}px`;
     star.style.top = `${rect.top + rect.height/2}px`;
     const angle = Math.random() * 2 * Math.PI;
-    // 稀有卡的星星飛得比較遠
-    const distance = isRare ? (100 + Math.random() * 200) : (80 + Math.random() * 100); 
+    const distance = 100 + Math.random() * 200; // 飛得比較遠
     star.style.setProperty("--x", `${Math.cos(angle) * distance}px`);
     star.style.setProperty("--y", `${Math.sin(angle) * distance}px`);
     document.body.appendChild(star);
     setTimeout(() => star.remove(), 2000);
   }
 }
-
 /* 我的卡片模態 */
 let redeemTarget=null;
 function closeMyCardsModal(){document.getElementById('myCardsModal').style.display='none';}
