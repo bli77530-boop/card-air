@@ -486,22 +486,14 @@ function startDraw() {
   }, 50);
 
   // ===== 在這裡指定抽到的卡片 =====
-  let chosenCard = 'images/air.png'; 
-
-  let isRare = false;
-  if (chosenCard === 'images/air.png') {
-    isRare = true;
-  }
-
-  // ⚠️ 注意：不要在這裡呼叫 showCenterCard，不然會提早彈出來！
+  et chosenCard = 'images/air.png'; 
 
   // 3. 設定時間軸：轉 3 秒 + 停住等待 2 秒 = 總共 5 秒 (5000ms)
   centerCardTimeout = setTimeout(() => {
-    // 時間到，把背面的 7 張卡隱藏
     cards.forEach(c => c.style.opacity = 0);
 
-    // 揭曉最終結果 (顯示雙面卡) ── ✨ 必須放在這裡，等 5 秒後才執行 ✨
-    showCenterCard(chosenCard, isRare);
+    // 揭曉最終結果 (只需要傳入圖片網址就好)
+    showCenterCard(chosenCard);
 
     // 存檔紀錄
     data.drawCount++;
