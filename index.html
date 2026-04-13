@@ -114,14 +114,15 @@ html, body {
   transform:translate(-50%,-50%) scale(1);
 }
 
-.star{
-  position:absolute;
-  width:20px;
-  height:20px;
-  background:white;
-  border-radius:50%;
-  pointer-events:none;
-  animation:flyStar 1.8s ease-out forwards;
+.star {
+  position: absolute;
+  width: 8px; /* 縮小一點 */
+  height: 8px;
+  background: gold; /* 改成金色 */
+  border-radius: 50%;
+  pointer-events: none;
+  box-shadow: 0 0 10px gold; /* 加上發光 */
+  animation: flyStar 1.8s ease-out forwards;
 }
 
 @keyframes flyStar{to{
@@ -318,30 +319,58 @@ html, body {
     bottom: calc(15% + env(safe-area-inset-bottom));
   }
 }
-/* --- 稀有卡專屬特效 --- */
-/* 稀有卡背景光暈與呼吸燈效果 */
-.rare-card .flip-inner {
-  box-shadow: 0 0 40px #ffaa00, 0 0 80px #ff0055, 0 0 120px #ff00ff !important;
-  animation: rarePulse 1.2s infinite alternate;
+  /* 全螢幕閃光 */
+.flash-bang {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: white;
+  z-index: 99999;
+  pointer-events: none;
+  opacity: 0;
 }
 
-@keyframes rarePulse {
-  0% { box-shadow: 0 0 30px #ffd700, 0 0 60px #ff8c00; transform: scale(1); }
-  100% { box-shadow: 0 0 60px #fffacd, 0 0 120px #ff003c; transform: scale(1.05); }
+@keyframes flashAnim {
+  0% { opacity: 0; }
+  10% { opacity: 1; }
+  100% { opacity: 0; }
 }
 
-/* 稀有卡專屬的金色星星 */
-.star.rare-star {
-  background: radial-gradient(circle, #ffffff 0%, #ffd700 50%, #ff8c00 100%);
-  box-shadow: 0 0 10px #ffd700;
-  width: 25px;
-  height: 25px;
-  animation: flyRareStar 2s ease-out forwards;
+/* 稀有卡爆裂旋轉金光 */
+.rare-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 150vw;
+  height: 150vw;
+  background: radial-gradient(circle, rgba(255,215,0,0.8) 0%, rgba(255,215,0,0) 70%);
+  transform: translate(-50%, -50%) scale(0);
+  z-index: 5;
+  pointer-events: none;
+  border-radius: 50%;
 }
 
-@keyframes flyRareStar {
-  0% { transform: translate(0, 0) scale(1) rotate(0deg); opacity: 1; }
-  100% { transform: translate(var(--x), var(--y)) scale(0) rotate(360deg); opacity: 0; }
+.rare-glow.active {
+  animation: glowExpand 2s ease-out forwards;
+}
+
+@keyframes glowExpand {
+  0% { transform: translate(-50%, -50%) scale(0); opacity: 1; }
+  50% { transform: translate(-50%, -50%) scale(1.5); opacity: 0.8; }
+  100% { transform: translate(-50%, -50%) scale(2); opacity: 0; }
+}
+
+/* 畫面抖動感 */
+.shake-screen {
+  animation: screenShake 0.5s screenShake ease-in-out;
+}
+
+@keyframes screenShake {
+  0%, 100% { transform: translate(0, 0); }
+  10%, 30%, 50%, 70%, 90% { transform: translate(-5px, -5px); }
+  20%, 40%, 60%, 80% { transform: translate(5px, 5px); }
 }
 </style>
 </head>
@@ -388,26 +417,12 @@ setFullHeight();
 /* 抽卡資料 */
 const backImage='images/sb.jpg';
 const cardImages = [
-  'images/1.jpg',
-  'images/22.jpg',
-  'images/3.jpg',
-  'images/4.jpg',
-  'images/21.jpg',
-  'images/20.jpg',
-  'images/23.jpg',
   'images/air.png'
 ];
 const cardActivities={'1.jpg':'品牌紀念小物','22.jpg':'買任一雞蛋仔送1杯梔春金烏龍','3.jpg':'現折10元（塔可系列除外）','4.jpg':'金桔系列折5元','21.jpg':'點中杯升級大杯免費','20.jpg':'金桔系列現折10元','23.jpg':'第二杯10塊'};
 // 卡片權重設定（稀有卡可設定較低權重）
 const cardPool = [
-  {img:'1.jpg', weight: 30},  // 普通卡
-  {img:'22.jpg', weight: 30},
-  {img:'3.jpg', weight: 30},
-  {img:'4.jpg', weight: 30},
-  {img:'21.jpg', weight: 30},
-  {img:'20.jpg', weight: 30},
-  {img:'23.jpg', weight: 10},
-  {img:'images/air.png', weight: 10}  // 稀有卡，權重低
+  {img:'images/air.png', weight: 10} 
 ];
 
 function getDrawData() {
@@ -486,13 +501,14 @@ function startDraw() {
   }, 50);
 
   // ===== 在這裡指定抽到的卡片 =====
-  et chosenCard = 'images/air.png'; 
+  let chosenCard = 'images/air.png'; 
 
   // 3. 設定時間軸：轉 3 秒 + 停住等待 2 秒 = 總共 5 秒 (5000ms)
   centerCardTimeout = setTimeout(() => {
+    // 時間到，把背面的 7 張卡隱藏
     cards.forEach(c => c.style.opacity = 0);
 
-    // 揭曉最終結果 (只需要傳入圖片網址就好)
+    // 揭曉最終結果 (顯示雙面卡)
     showCenterCard(chosenCard);
 
     // 存檔紀錄
@@ -501,100 +517,98 @@ function startDraw() {
     data.cards.push(chosenCard);
     data.lastDrawDate = new Date().toISOString().split('T')[0];
     saveDrawData(data);
-  }, 5000);
+  }, 5000); 
 }
+
 
 function showCenterCard(imageUrl) {
   const overlay = document.getElementById('overlay');
-  
+  overlay.style.background = 'rgba(0,0,0,0.6)';
+  overlay.style.pointerEvents = 'auto'; // 讓背景可以被點擊
+
   const container = document.getElementById("cardContainer");
   const centerCard = document.createElement("div");
-  centerCard.className = "centerCard rare-card"; // 🌟 直接加上 rare-card 特效類別
-
-  // 背景變成帶有紅金色的暗光
-  overlay.style.background = 'radial-gradient(circle, rgba(150,0,0,0.8) 0%, rgba(0,0,0,0.9) 80%)';
-  overlay.style.pointerEvents = 'auto';
+  centerCard.className = "centerCard";
 
   // 建立雙面卡片的 HTML 結構
+  // ⚠️ 請確保 'images/fish_back.png' 是你第二張屬性圖的正確路徑！
   centerCard.innerHTML = `
     <div class="flip-inner">
       <div class="flip-front" style="background-image: url('${imageUrl}')"></div>
-      <div class="flip-back" style="background-image: url('images/air b.png')"></div>
+      <div class="flip-back" style="background-image: url('images/fish_back.png')"></div>
     </div>
   `;
-
-  // 告訴手機瀏覽器：摸到卡片時不要做原生的縮放/滾動
-  centerCard.style.touchAction = 'none';
 
   container.appendChild(centerCard);
   currentCenterCard = centerCard;
   
-  // 觸發顯示動畫，並噴發大量稀有星星 (固定 60 顆)
   requestAnimationFrame(() => centerCard.classList.add('show'));
-  spawnStars(centerCard, 60);
+  spawnStars(centerCard, 20);
 
-  // --- 加入滑動偵測 (同時支援手機與電腦) ---
+  // --- 加入滑動偵測 (Swipe) ---
   let startX = 0;
+  let endX = 0;
 
   centerCard.addEventListener('touchstart', e => {
     startX = e.changedTouches[0].screenX;
   });
+
   centerCard.addEventListener('touchend', e => {
-    let endX = e.changedTouches[0].screenX;
-    handleSwipe(startX, endX);
+    endX = e.changedTouches[0].screenX;
+    handleSwipe();
   });
 
-  let isDragging = false;
-  centerCard.addEventListener('mousedown', e => {
-    startX = e.screenX;
-    isDragging = true;
-  });
-  window.addEventListener('mouseup', e => {
-    if (isDragging) {
-      isDragging = false;
-      handleSwipe(startX, e.screenX);
-    }
-  });
-
-  function handleSwipe(start, end) {
-    if (start - end > 40) {
+  function handleSwipe() {
+    // 滑動距離超過 50px 才算數
+    if (startX - endX > 50) {
+      // 向左滑：翻到背面
       centerCard.classList.add('flipped');
-    } else if (end - start > 40) {
+    } else if (endX - startX > 50) {
+      // 向右滑：翻回正面
       centerCard.classList.remove('flipped');
     }
   }
 
-  // --- 點擊背景關閉卡片 ---
+  // --- 改成點擊背景(黑底)關閉卡片，而不是 5 秒自動關閉 ---
   overlay.onclick = function() {
     if (centerCard) {
       centerCard.remove();
       currentCenterCard = null;
     }
     overlay.style.background = 'rgba(0,0,0,0)';
-    overlay.style.pointerEvents = 'none'; 
-    overlay.onclick = null; 
+    overlay.style.pointerEvents = 'none'; // 關閉後背景不可點擊
+    overlay.onclick = null; // 清除點擊事件
   };
 }
 
-// 已經移除了 isRare 判定，所有星星都是華麗版
-function spawnStars(target, count) {
-  const rect = target.getBoundingClientRect();
-  for(let i=0; i<count; i++) {
-    const star = document.createElement("div");
-    
-    // 直接套用稀有星星的樣式
-    star.className = "star rare-star"; 
-    
-    star.style.left = `${rect.left + rect.width/2}px`;
-    star.style.top = `${rect.top + rect.height/2}px`;
-    const angle = Math.random() * 2 * Math.PI;
-    const distance = 100 + Math.random() * 200; // 飛得比較遠
-    star.style.setProperty("--x", `${Math.cos(angle) * distance}px`);
-    star.style.setProperty("--y", `${Math.sin(angle) * distance}px`);
+  // --- 改成點擊背景(黑底)關閉卡片，而不是 5 秒自動關閉 ---
+  overlay.onclick = function() {
+    if (centerCard) {
+      centerCard.remove();
+      currentCenterCard = null;
+    }
+    overlay.style.background = 'rgba(0,0,0,0)';
+    overlay.style.pointerEvents = 'none'; // 關閉後背景不可點擊
+    overlay.onclick = null; // 清除點擊事件
+  };
+}
+
+function spawnStars(target,count){
+  const rect=target.getBoundingClientRect();
+  for(let i=0;i<count;i++){
+    const star=document.createElement("div");
+    star.className="star";
+    star.style.left=`${rect.left+rect.width/2}px`;
+    star.style.top=`${rect.top+rect.height/2}px`;
+    const angle=Math.random()*2*Math.PI;
+    const distance=80+Math.random()*100;
+    star.style.setProperty("--x",`${Math.cos(angle)*distance}px`);
+    star.style.setProperty("--y",`${Math.sin(angle)*distance}px`);
     document.body.appendChild(star);
-    setTimeout(() => star.remove(), 2000);
+    setTimeout(()=>star.remove(),1800);
   }
 }
+
 /* 我的卡片模態 */
 let redeemTarget=null;
 function closeMyCardsModal(){document.getElementById('myCardsModal').style.display='none';}
